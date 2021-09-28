@@ -1,13 +1,21 @@
 ;; The first three lines of this file were inserted by DrRacket. They record metadata
 ;; about the language level of this file in a form that our tools can easily process.
 #reader(lib "htdp-advanced-reader.ss" "lang")((modname HW5) (read-case-sensitive #t) (teachpacks ()) (htdp-settings #(#t constructor repeating-decimal #t #t none #f () #f)))
-
 (define resolve
   (lambda (varName env)
     (cond
       ((null? env) #f)
       ((eq? varName (caar env)) (cadar env))
       (else (resolve varName (cdr env))))))
+
+(define extend-env
+  (lambda (lo-vars lo-vals env)
+    (cond
+      ((null? lo-vars) env)
+      (else (extend-env (cdr lo-vars)
+                        (cdr lo-vals)
+                        (cons (list (car lo-vars) (car lo-vals)) env))))))
+                              
 
 
 (define do-mathy-stuff-toaster
@@ -35,10 +43,11 @@
                    (no-parser (caddr no-code)))))
       (else (list 'call-exp
                   (no-parser (cadr no-code))
-                  (no-parser (caddr no-code)))))))
+                  (map no-parser (cddr no-code)))))))
     
 (define env '((age 21) (a 7) (b 5) (c 23)))
-(define sample-no-code '(call (function (x) x) (do-mathy-stuff % a b)))
+
+(define sample-no-code '(call (function (x y) (do-mathy-stuff + x y)) (do-mathy-stuff * a b) 15))
 
 (define run-parsed-code
   (lambda (parsed-no-code env)
@@ -57,11 +66,11 @@
       (else
        (run-parsed-code
         (cadr parsed-no-code)
-        (cons (list (cadr (cadr (cadr parsed-no-code)))
-                    (run-parsed-code (caddr parsed-no-code) env))
-              env))))))
+        (extend-env
+         (cdr (cadr (cadr parsed-no-code)))
+         (map (lambda (packet) (run-parsed-code (car packet) (cadr packet))) (map (lambda (x) (list x env)) (caddr parsed-no-code)))
+         env))))))
 
-(run-parsed-code (no-parser sample-no-code) env)
-      
-    
-      
+(define parsed-no-code (no-parser sample-no-code))
+parsed-no-code
+(run-parsed-code parsed-no-code env)
